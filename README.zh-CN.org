@@ -1,0 +1,43 @@
+#+title: Fussy Search
+#+author: Qiqi Jin
+#+language: zh
+
+* 概述
+
+* 前提
+
+** 需要的 Emacs 包
+
+** 安装
++ 克隆项目到你自己的 Emacs 配置目录下：
+#+BEGIN_SRC sh
+  git clone https://github.com/ginqi7/fuzzy-search ~/.emacs.d/lisp/fuzzy-search;
+#+END_SRC
+
++ 把克隆的路径添加到 =load-path= 当中
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'load-path "~/.emacs.d/lisp/fuzzy-search")
+#+END_SRC
+
+* 配置
+
+#+BEGIN_SRC emacs-lisp
+  (require 'fuzzy-search)
+#+end_src
+
+** 变量
+
+| 变量 | 默认值 | 解释 |
+|------+--------+------|
+|      |        |      |
+
+* 命令
+| Name         | Docstring               |
+|--------------+-------------------------|
+| fuzzy-search | Performs a fuzzy search |
+
+* 特性
+
+* 例子
+
+* Footnotes

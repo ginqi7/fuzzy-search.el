@@ -1,0 +1,42 @@
+#+title: Fuzzy Search
+#+author: Qiqi Jin
+#+language: en
+
+#+HTML: <a href ="https://github.com/ginqi7/fuzzy-search/blob/master/README.zh-CN.org"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555.svg"/></a>
+
+* Overview
+
+* Prerequisites
+
+** Install
++ clone the project in your own emacs configuration files directory, like:
+  #+BEGIN_SRC sh
+    git clone https://github.com/ginqi7/fuzzy-search ~/.emacs.d/lisp/fuzzy-search;
+  #+END_SRC
+
++ add the path to 'load-path'
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/lisp/fuzzy-search")
+  #+END_SRC
+
+* Configuration
+Here are a few variables that can be used for configuration:
+#+BEGIN_SRC emacs-lisp
+  (require 'fuzzy-search)
+#+end_src
+
+** Variables
+| variable | default value | explain |
+|----------+---------------+---------|
+|          |               |         |
+
+** Commands
+| Name         | Docstring               |
+|--------------+-------------------------|
+| fuzzy-search | Performs a fuzzy search |
+
+* Features
+
+* Example
+
+* Footnotes
