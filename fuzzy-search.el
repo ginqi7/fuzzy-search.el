@@ -26,14 +26,9 @@
 
 (require 'cl-lib)
 (require 'eieio)
+(require 'fuzzy-search-lcs)
 
 ;;; Custom Faces:
-
-(defface fuzzy-search-error '((t :background "red" :foreground "black"))
-  "Face used to highlight errors or failed matches in fuzzy search results.")
-
-(defface fuzzy-search-highlight '((t :background "green" :foreground "black"))
-  "Face used to highlight errors or failed matches in fuzzy search results.")
 
 ;;; Internal Variables:
 
@@ -45,75 +40,81 @@
 (defclass fuzzy-search-token ()
   ((text :initarg :text :reader fuzzy-search-token-text)
    (begin :initarg :begin :reader fuzzy-search-token-begin)
-   (end :initarg :end :reader fuzzy-search-token-end))
+   (end :initarg :end :reader fuzzy-search-token-end)
+   (diff-type :initarg :diff-type :reader fuzzy-search-token-diff-type))
   "Class representing a : single token in fuzzy search input or result.
 Each instance stores:
-text:   the actual string content of the token
-begin:  starting position (character index) of this token in the original string
-end:    ending position (exclusive) of this token in the original string
+text:      the actual string content of the token
+begin:     starting position (character index) of this token in the original string
+end:       ending position (exclusive) of this token in the original string
+diff-type: equal, less or more
 Used to preserve positional information for accurate highlighting and matching.")
 
-(defclass fuzzy-search-token-pair ()
-  ((from :initarg :from :reader fuzzy-search-token-pair-from)
-   (to :initarg :to :reader fuzzy-search-token-pair-to)
-   (match :initarg :match :reader fuzzy-search-token-pair-match-p))
-  "Class representing a paired mapping between one input token and one candidate token in fuzzy matching.
-Slots:
-- from:   the input-side fuzzy-search-token (the user's search query token)
-- to:     the candidate-side fuzzy-search-token (the matched token from target text)
-- match:  boolean indicating whether this pair is considered a successful match
-Used to record individual token-level alignment decisions when building the overall fuzzy search correspondence.")
+(defclass fuzzy-search-token-differences ()
+  ((tokens :initarg :tokens :reader fuzzy-search-token-differences-tokens)
+   (equal-size :initarg :equal-size :reader fuzzy-search-token-differences-euqal-size))
+  "Defines a class that holds information about token differences, including the tokens themselves and a measure of their equal size. The 'tokens' slot stores the relevant tokens, and the 'equal-size' slot indicates how many tokens match.")
 
-(defclass fuzzy-search-token-match-list ()
-  ((items :initarg :items :reader fuzzy-search-token-match-list-items)
-   (match-size :initarg :match-size :reader fuzzy-search-token-match-list-match-size))
-  "Class representing the complete matching result for one input token against all candidates.
-Contains:
-- items:       list of fuzzy-search-token-match objects (each records how one candidate matched this token)
-- match-size:  the best (maximum) match length achieved by any candidate for this token
-Mainly used as an intermediate grouping structure when computing multi-token fuzzy search results.")
+(cl-defmethod fuzzy-search-token-differences-first ((lst fuzzy-search-token-differences))
+  "Returns the first token from the tokens in the specified fuzzy-search-token-differences instance."
+  (cl-first (fuzzy-search-token-differences-tokens lst)))
 
-(cl-defmethod fuzzy-search-token-match-list-first ((lst fuzzy-search-token-match-list))
-  "Returns the first fuzzy-search-token-match object from the match list."
-  (cl-first (fuzzy-search-token-match-list-items lst)))
+(cl-defmethod fuzzy-search-token-differences-last ((lst fuzzy-search-token-differences))
+  "Returns the last token from the tokens in the specified fuzzy-search-token-differences instance."
+  (car (last (fuzzy-search-token-differences-tokens lst))))
 
-(cl-defmethod fuzzy-search-token-match-list-last ((lst fuzzy-search-token-match-list))
-  "Returns the last fuzzy-search-token-match object from the match list."
-  (car (last (fuzzy-search-token-match-list-items lst))))
+(cl-defmethod fuzzy-search-token-equal ((token1 fuzzy-search-token)
+                                        (token2 fuzzy-search-token))
+  "Compares the text of two fuzzy-search-token objects for equality, returning T if they match."
+  (string= (fuzzy-search-token-text token1)
+           (fuzzy-search-token-text token2)))
 
-(cl-defmethod fuzzy-search-compare-token ((token1 fuzzy-search-token)
-                                          (token2 fuzzy-search-token))
-  "Compares two fuzzy search tokens and returns a fuzzy search token pair containing the source token, target token, and a match status indicating whether their text values are equal."
-  (fuzzy-search-token-pair
-   :from token1
-   :to token2
-   :match (string= (fuzzy-search-token-text token1)
-                   (fuzzy-search-token-text token2))))
+(defun fuzzy-search-token--builder (diff-type token)
+  "Builds a new fuzzy-search-token object using the specified diff-type and retaining the text, begin, and end values from the provided token."
+  (fuzzy-search-token
+        :diff-type diff-type
+        :text (fuzzy-search-token-text token)
+        :begin (fuzzy-search-token-begin token)
+        :end (fuzzy-search-token-end token)))
 
-(cl-defmethod fuzzy-search-max-token-match-list ((lst1 fuzzy-search-token-match-list)
-                                                 (lst2 fuzzy-search-token-match-list))
-  "Compares two fuzzy-search-token-match-list objects and returns the one considered better.
-Comparison logic:
-1. The list with larger match-size wins immediately
-2. If match-size is equal, prefers the list whose first match has match-p = t (i.e. contains an actual matched pair)
-3. If still tied, returns the second list
-Used to select the stronger matching result when merging or choosing between candidate match groups for the same input token."
-  (let ((n1 (fuzzy-search-token-match-list-match-size lst1))
-        (n2 (fuzzy-search-token-match-list-match-size lst2)))
-    (cond
-     ((> n1 n2) lst1)
-     ((< n1 n2) lst2)
-     ((fuzzy-search-token-pair-match-p (fuzzy-search-token-match-list-first lst1)) lst1)
-     (t lst2))))
+(cl-defmethod fuzzy-search-min-difference ((lst1 fuzzy-search-token-differences)
+                                           (lst2 fuzzy-search-token-differences))
+  "Compares the two fuzzy-search-token-differences objects by their equal-size values, returning the one with the larger equal-size. If they have the same value, it returns the second object."
+  (let ((equal-size1 (fuzzy-search-token-differences-euqal-size lst1))
+        (equal-size2 (fuzzy-search-token-differences-euqal-size lst2))
+        (size1 (length (fuzzy-search-token-differences-tokens lst1)))
+        (size2 (length (fuzzy-search-token-differences-tokens lst2))))
+    (cond ((> equal-size1 equal-size2) lst1)
+          (t lst2))))
+
+(defun fuzzy-search--pre-less-token (tokens token)
+  "Searches backward from the position of the given token in tokens for the first token whose diff-type is 'less', returning that token or nil if none is found."
+  (let ((index (cl-position token tokens)))
+    (cl-loop for i downfrom index to 0
+             do
+             (when (equal 'less (fuzzy-search-token-diff-type (nth i tokens)))
+               (cl-return (nth i tokens))))))
 
 (defun fuzzy-search-compare-tokens (tokens1 tokens2)
   "Compares two lists of fuzzy search tokens pairwise, creates a list of token pair comparisons, counts the number of matches, and returns a token match list containing the comparison results and the total match count."
-  (let* ((items (mapcar (lambda (pair) (fuzzy-search-compare-token (car pair) (cdr pair)))
-                        (cl-pairlis tokens1 tokens2)))
-         (match-size (cl-count-if #'fuzzy-search-token-pair-match-p items)))
-    (fuzzy-search-token-match-list
-     :items items
-     :match-size match-size)))
+  (let* ((m (length tokens1))
+         (n (length tokens2))
+         (tokens (fuzzy-search-lcs-diff tokens1 tokens2
+                                        #'fuzzy-search-token-equal
+                                        #'fuzzy-search-token--builder))
+         (equal-size (cl-count-if (lambda (token) (equal 'equal (fuzzy-search-token-diff-type token))) tokens))
+         (pre-less-token))
+    ;; (print equal-size)
+    ;; (print tokens)
+    (dolist (token tokens)
+      (when (equal 'more (fuzzy-search-token-diff-type token))
+        (setq pre-less-token (fuzzy-search--pre-less-token tokens token))
+        (when pre-less-token
+          (eieio-oset token 'begin (fuzzy-search-token-begin pre-less-token))
+          (eieio-oset token 'end (fuzzy-search-token-end pre-less-token)))))
+    (fuzzy-search-token-differences
+     :tokens tokens
+     :equal-size equal-size)))
 
 (defun fuzzy-search--clear-highlights ()
   "Remove all highlighted overlays related to fuzzy search."
@@ -122,14 +123,21 @@ Used to select the stronger matching result when merging or choosing between can
       (when (overlayp ov) (delete-overlay ov)))
     (setq fuzzy-search--token-overlays nil)))
 
-(defun fuzzy-search--highlight-token (beg end face priority &optional error-text)
+(defun fuzzy-search--highlight-token (beg end token)
   "Create a highlight overlay within the BEG..END range. "
-  (let ((ov (make-overlay beg end)))
-    (overlay-put ov 'face face)
-    (overlay-put ov 'priority priority)
-    (when error-text
-      (overlay-put ov 'after-string (propertize (format "(%s)" error-text)
-                                                'face (list face '(:slant italic)))))
+  ;; (print token)
+  (let ((ov (make-overlay beg end))
+        (diff-type (fuzzy-search-token-diff-type token)))
+    (pcase diff-type
+      ('less
+       (overlay-put ov 'face 'diff-removed))
+      ('equal
+       (overlay-put ov 'face 'diff-index))
+      ('more
+       (overlay-put ov 'after-string
+                    (propertize (format "(%s)" (fuzzy-search-token-text token))
+                                'face (list 'diff-added '(:slant italic))))))
+
     (push ov fuzzy-search--token-overlays)
     ov))
 
@@ -170,7 +178,7 @@ Used to select the stronger matching result when merging or choosing between can
          (region-tokens (fuzzy-search--region-tokens start end))
          (n (length query-tokens))
          (m (length region-tokens))
-         (token-match-list)
+         (differences)
          (i 0)
          (k 1))
     ;; (print tokens)
@@ -178,31 +186,23 @@ Used to select the stronger matching result when merging or choosing between can
     (if (<= n 0)
         (user-error "The query contains no available alphanumeric characters.")
       (while (< (+ i n) m)
-        (if token-match-list
-            (setq token-match-list
-                  (fuzzy-search-max-token-match-list
-                   token-match-list
+        (if differences
+            (setq differences
+                  (fuzzy-search-min-difference
+                   differences
                    (fuzzy-search-compare-tokens (cl-subseq region-tokens i (+ i n)) query-tokens)))
-          (setq token-match-list (fuzzy-search-compare-tokens (cl-subseq region-tokens i (+ i n)) query-tokens)))
+          (setq differences (fuzzy-search-compare-tokens (cl-subseq region-tokens i (+ i n)) query-tokens)))
         (setq i (1+ i)))
-      (if (or (not (fuzzy-search-token-match-list-p token-match-list))
-              (< (fuzzy-search-token-match-list-match-size token-match-list) k))
+      (if (or (not (fuzzy-search-token-differences-p differences))
+              (< (fuzzy-search-token-differences-euqal-size differences) k))
           (message "Fuzzy matching below the threshold")
-        (fuzzy-search--highlight-token
-         (fuzzy-search-token-begin (fuzzy-search-token-pair-from (fuzzy-search-token-match-list-first token-match-list)))
-         (fuzzy-search-token-end (fuzzy-search-token-pair-from (fuzzy-search-token-match-list-last token-match-list)))
-         'fuzzy-search-highlight
-         1000)
-        (goto-char (fuzzy-search-token-end (fuzzy-search-token-pair-from (fuzzy-search-token-match-list-last token-match-list))))
+        (goto-char (fuzzy-search-token-end (fuzzy-search-token-differences-last differences)))
         (recenter)
-        (dolist (pair (fuzzy-search-token-match-list-items token-match-list))
-          (unless (fuzzy-search-token-pair-match-p pair)
-            (fuzzy-search--highlight-token
-             (fuzzy-search-token-begin (fuzzy-search-token-pair-from pair))
-             (fuzzy-search-token-end (fuzzy-search-token-pair-from pair))
-             'fuzzy-search-error
-             2000
-             (fuzzy-search-token-text (fuzzy-search-token-pair-to pair)))))))))
+        (dolist (token (fuzzy-search-token-differences-tokens differences))
+          (fuzzy-search--highlight-token
+             (fuzzy-search-token-begin token)
+             (fuzzy-search-token-end token)
+             token))))))
 
 (provide 'fuzzy-search)
 ;;; fuzzy-search.el ends here
