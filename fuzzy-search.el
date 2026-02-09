@@ -29,6 +29,8 @@
 (require 'fuzzy-search-lcs)
 
 ;;; Custom Faces:
+(defcustom fuzzy-search-recenter-line 10
+  "Specifies the line number used for recentering during fuzzy searches.")
 
 ;;; Internal Variables:
 
@@ -197,7 +199,7 @@ Used to preserve positional information for accurate highlighting and matching."
               (< (fuzzy-search-token-differences-euqal-size differences) k))
           (message "Fuzzy matching below the threshold")
         (goto-char (fuzzy-search-token-end (fuzzy-search-token-differences-last differences)))
-        (recenter)
+        (recenter fuzzy-search-recenter-line)
         (dolist (token (fuzzy-search-token-differences-tokens differences))
           (fuzzy-search--highlight-token
              (fuzzy-search-token-begin token)
