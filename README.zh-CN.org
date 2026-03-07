@@ -1,43 +1,110 @@
-#+title: Fussy Search
+#+title: Fuzzy Search
 #+author: Qiqi Jin
-#+language: zh
+#+language: en
 
-* 概述
+#+HTML: <a href="https://github.com/ginqi7/fuzzy-search/blob/master/README.zh-CN.org"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555.svg"/></a>
 
-* 前提
+* Overview
 
-** 需要的 Emacs 包
+Fuzzy Search is an Emacs fuzzy search tool based on the Longest Common Subsequence (LCS) algorithm. It performs fuzzy matching within the current window or selected region, and highlights match results with different colors.
 
-** 安装
-+ 克隆项目到你自己的 Emacs 配置目录下：
-#+BEGIN_SRC sh
-  git clone https://github.com/ginqi7/fuzzy-search ~/.emacs.d/lisp/fuzzy-search;
-#+END_SRC
+* Features
 
-+ 把克隆的路径添加到 =load-path= 当中
-#+BEGIN_SRC emacs-lisp
-  (add-to-list 'load-path "~/.emacs.d/lisp/fuzzy-search")
-#+END_SRC
+- Token-level fuzzy matching based on LCS algorithm
+- Customizable threshold for filtering match results
+- Three-state highlighting:
+  - =equal= (matched): uses =diff-index= face
+  - =less= (extra): uses =diff-removed= face
+  - =more= (missing): displayed in italic after the text
+- Automatically positions and centers the best match
 
-* 配置
+* Prerequisites
+
+** Requirements
+
+- Emacs 27.0+ (requires =cl-lib= and =eieio=)
+
+* Installation
+
++ Clone the project to your Emacs configuration directory:
+  #+BEGIN_SRC sh
+    git clone https://github.com/ginqi7/fuzzy-search ~/.emacs.d/lisp/fuzzy-search
+  #+END_SRC
+
++ Add the path to =load-path=:
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/lisp/fuzzy-search")
+  #+END_SRC
+
+* Configuration
 
 #+BEGIN_SRC emacs-lisp
   (require 'fuzzy-search)
-#+end_src
+#+END_SRC
 
-** 变量
+** Variables
 
-| 变量 | 默认值 | 解释 |
-|------+--------+------|
-|      |        |      |
+| Variable                   | Default | Description                                        |
+|----------------------------+---------+----------------------------------------------------|
+| =fuzzy-search-recenter-line= | 10      | Line number for recentering after a successful match |
 
-* 命令
-| Name         | Docstring               |
-|--------------+-------------------------|
-| fuzzy-search | Performs a fuzzy search |
+Configure with =setq= or =customize-variable=:
 
-* 特性
+#+BEGIN_SRC emacs-lisp
+  (setq fuzzy-search-recenter-line 15)
+#+END_SRC
 
-* 例子
+** Commands
+
+| Command        | Description                                                    |
+|----------------+----------------------------------------------------------------|
+| =fuzzy-search=   | Perform fuzzy search in current window or region with optional threshold (0-1, default 0.5) |
+
+Example key binding:
+
+#+BEGIN_SRC emacs-lisp
+  (global-set-key (kbd "C-c s") 'fuzzy-search)
+#+END_SRC
+
+* Usage
+
+** Basic Usage
+
+1. Activate a region (optional), or search within the entire window
+2. Run =M-x fuzzy-search=
+3. Enter the search query string
+4. (Optional) Enter a threshold value between 0 and 1 (default 0.5)
+
+** Search Example
+
+Given the following buffer content:
+#+BEGIN_EXAMPLE
+  (defun fuzzy-search-query-tokens (str)
+    "Generate token list from string.")
+#+END_EXAMPLE
+
+Searching for =fz query= will:
+- Match the region containing tokens related to =fz= and =query=
+- Highlight the matched parts
+- Move cursor to the end of the match
+
+* How It Works
+
+1. Tokenize the search query and the target region into token lists (alphanumeric sequences)
+2. Use LCS algorithm to compute differences between the two token lists
+3. Slide a window to find the best match position
+4. Display results if they meet the threshold requirement
+
+* Dependencies
+
+- [[https://github.com/ginqi7/fuzzy-search/blob/master/fuzzy-search-lcs.el][fuzzy-search-lcs.el]] - Core LCS difference calculation library
+
+* License
+
+GPL-3.0 or later
+
+* Author
+
+Qiqi Jin <ginqi7@gmail.com>
 
 * Footnotes
