@@ -1,109 +1,109 @@
 #+title: Fuzzy Search
 #+author: Qiqi Jin
-#+language: zh
+#+language: en
 
-#+HTML: <a href="https://github.com/ginqi7/fuzzy-search/blob/master/README.org"><img src="https://img.shields.io/badge/README-English-555555.svg"/></a>
+#+HTML: <a href="https://github.com/ginqi7/fuzzy-search/blob/master/README.zh-CN.org"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555.svg"/></a>
 
-* 概述
+* Overview
 
-Fuzzy Search 是一个基于最长公共子序列 (LCS) 算法的 Emacs 模糊搜索工具。它可以在当前窗口或选中的区域内进行模糊匹配，并通过不同颜色高亮显示匹配结果。
+Fuzzy Search is an Emacs fuzzy search tool based on the Longest Common Subsequence (LCS) algorithm. It performs fuzzy matching within the current window or selected region, and highlights match results with different colors.
 
-* 功能特性
+* Features
 
-- 基于 LCS 算法的 Token 级模糊匹配
-- 支持自定义阈值过滤匹配结果
-- 三种状态高亮显示：
-  - =equal=（匹配）：使用 =diff-index= 面
-  - =less=（多余）：使用 =diff-removed= 面
-  - =more=（缺少）：以斜体形式在后方显示
-- 自动定位到最佳匹配位置并居中显示
+- Token-level fuzzy matching based on LCS algorithm
+- Customizable threshold for filtering match results
+- Three-state highlighting:
+  - =equal= (matched): uses =diff-index= face
+  - =less= (extra): uses =diff-removed= face
+  - =more= (missing): displayed in italic after the text
+- Automatically positions and centers the best match
 
-* 安装
+* Prerequisites
 
-** 依赖
+** Requirements
 
-- Emacs 27.0+ (需要 =cl-lib= 和 =eieio=)
+- Emacs 27.0+ (requires =cl-lib= and =eieio=)
 
-** 安装步骤
+* Installation
 
-+ 克隆项目到你自己的 Emacs 配置目录下：
-#+BEGIN_SRC sh
-  git clone https://github.com/ginqi7/fuzzy-search ~/.emacs.d/lisp/fuzzy-search
-#+END_SRC
++ Clone the project to your Emacs configuration directory:
+  #+BEGIN_SRC sh
+    git clone https://github.com/ginqi7/fuzzy-search ~/.emacs.d/lisp/fuzzy-search
+  #+END_SRC
 
-+ 把克隆的路径添加到 =load-path= 当中
-#+BEGIN_SRC emacs-lisp
-  (add-to-list 'load-path "~/.emacs.d/lisp/fuzzy-search")
-#+END_SRC
++ Add the path to =load-path=:
+  #+BEGIN_SRC emacs-lisp
+    (add-to-list 'load-path "~/.emacs.d/lisp/fuzzy-search")
+  #+END_SRC
 
-* 配置
+* Configuration
 
 #+BEGIN_SRC emacs-lisp
   (require 'fuzzy-search)
 #+END_SRC
 
-** 变量
+** Variables
 
-| 变量名                     | 默认值 | 说明                                      |
-|----------------------------+--------+-------------------------------------------|
-| =fuzzy-search-recenter-line= | 10     | 匹配后重新居中时，目标行所在的窗口行号    |
+| Variable                   | Default | Description                                        |
+|----------------------------+---------+----------------------------------------------------|
+| =fuzzy-search-recenter-line= | 10      | Line number for recentering after a successful match |
 
-可以通过 =setq= 或 =customize-variable= 修改配置：
+Configure with =setq= or =customize-variable=:
 
 #+BEGIN_SRC emacs-lisp
   (setq fuzzy-search-recenter-line 15)
 #+END_SRC
 
-* 命令
+** Commands
 
-| 命令              | 说明                                                                 |
-|-------------------+----------------------------------------------------------------------|
-| =fuzzy-search=      | 在当前窗口或选中区域内执行模糊搜索，支持交互式阈值参数 (0-1，默认 0.5) |
+| Command        | Description                                                    |
+|----------------+----------------------------------------------------------------|
+| =fuzzy-search=   | Perform fuzzy search in current window or region with optional threshold (0-1, default 0.5) |
 
-绑定快捷键示例：
+Example key binding:
 
 #+BEGIN_SRC emacs-lisp
   (global-set-key (kbd "C-c s") 'fuzzy-search)
 #+END_SRC
 
-* 使用方法
+* Usage
 
-** 基本用法
+** Basic Usage
 
-1. 激活一个区域（可选），或者直接在整个窗口范围内搜索
-2. 运行 =M-x fuzzy-search=
-3. 输入搜索查询字符串
-4. （可选）输入阈值（0-1 之间，默认 0.5）
+1. Activate a region (optional), or search within the entire window
+2. Run =M-x fuzzy-search=
+3. Enter the search query string
+4. (Optional) Enter a threshold value between 0 and 1 (default 0.5)
 
-** 搜索示例
+** Search Example
 
-假设当前缓冲区内容为：
+Given the following buffer content:
 #+BEGIN_EXAMPLE
   (defun fuzzy-search-query-tokens (str)
     "Generate token list from string.")
 #+END_EXAMPLE
 
-搜索 =fz query= 会：
-- 匹配包含 =fz= 和 =query= 相关 token 的区域
-- 高亮显示匹配部分
-- 将光标移动到匹配结束位置
+Searching for =fz query= will:
+- Match the region containing tokens related to =fz= and =query=
+- Highlight the matched parts
+- Move cursor to the end of the match
 
-* 工作原理
+* How It Works
 
-1. 将搜索查询和待搜索区域分别切分为 token 列表（字母数字组合）
-2. 使用 LCS 算法计算两个 token 列表的差异
-3. 滑动窗口找到最佳匹配位置
-4. 根据阈值判断是否显示结果
+1. Tokenize the search query and the target region into token lists (alphanumeric sequences)
+2. Use LCS algorithm to compute differences between the two token lists
+3. Slide a window to find the best match position
+4. Display results if they meet the threshold requirement
 
-* 依赖项目
+* Dependencies
 
-- [[https://github.com/ginqi7/fuzzy-search/blob/master/fuzzy-search-lcs.el][fuzzy-search-lcs.el]] - LCS 差异计算核心库
+- [[https://github.com/ginqi7/fuzzy-search/blob/master/fuzzy-search-lcs.el][fuzzy-search-lcs.el]] - Core LCS difference calculation library
 
-* 许可证
+* License
 
 GPL-3.0 or later
 
-* 作者
+* Author
 
 Qiqi Jin <ginqi7@gmail.com>
 
