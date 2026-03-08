@@ -11,4 +11,6 @@ RM=@rm -rf
 solve-dependencies:
 	@sh ./dependencies.sh
 test:   solve-dependencies
-	@$(EMACS) $(EMACS_BATCH_OPTS) --load ./tests/tests.el
+	@$(EMACS) $(EMACS_BATCH_OPTS) --batch \
+		--load tests/tests.el \
+		-f ert-run-tests-batch-and-exit
