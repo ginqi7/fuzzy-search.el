@@ -243,7 +243,7 @@
                                         (lambda (type elem)
                                           (list type elem)))))
     (should (equal result
-                   '(((less . "a") (more . "b")))))))
+                   '((less "a") (more "b"))))))
 
 (ert-deftest test-fuzzy-search-lcs-diff--prefix-removed ()
   "Test diff when prefix is removed."
