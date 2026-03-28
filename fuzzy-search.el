@@ -164,7 +164,7 @@ Used to preserve positional information for accurate highlighting and matching."
     (fuzzy-search--region-tokens (point-min) (point-max))))
 
 ;;;
-(defun fuzzy-search (query &optional threshold)
+(defun fuzzy-search (query &optional threshold recenter-p)
   "Performs a fuzzy search for a given query within a specified text region or window, highlights matching and non-matching tokens, and navigates to the match if it meets the specified threshold. Allows for optional threshold adjustment and handles cases where the query contains no valid characters or no matches are found."
   (interactive
    (list (read-string "Query: ")
@@ -198,13 +198,14 @@ Used to preserve positional information for accurate highlighting and matching."
       (if (or (not (fuzzy-search-token-differences-p differences))
               (< (fuzzy-search-token-differences-euqal-size differences) k))
           (message "Fuzzy matching below the threshold")
-        (goto-char (fuzzy-search-token-end (fuzzy-search-token-differences-last differences)))
-        (recenter fuzzy-search-recenter-line)
+        (when recenter-p
+          (goto-char (fuzzy-search-token-end (fuzzy-search-token-differences-last differences)))
+          (recenter fuzzy-search-recenter-line))
         (dolist (token (fuzzy-search-token-differences-tokens differences))
           (fuzzy-search--highlight-token
-             (fuzzy-search-token-begin token)
-             (fuzzy-search-token-end token)
-             token))))))
+           (fuzzy-search-token-begin token)
+           (fuzzy-search-token-end token)
+           token))))))
 
 (provide 'fuzzy-search)
 ;;; fuzzy-search.el ends here
